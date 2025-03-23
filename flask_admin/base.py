@@ -5,6 +5,7 @@ from functools import wraps
 
 from flask import abort
 from flask import current_app
+from flask import Flask
 from flask import g
 from flask import render_template
 from flask import url_for
@@ -17,6 +18,7 @@ from flask_admin._compat import as_unicode
 # For compatibility reasons import MenuLink
 from flask_admin.blueprints import _BlueprintWithHostSupport as Blueprint
 from flask_admin.consts import ADMIN_ROUTES_HOST_VARIABLE
+from flask_admin.menu import BaseMenu  # noqa: F401
 from flask_admin.menu import MenuCategory  # noqa: F401
 from flask_admin.menu import MenuLink  # noqa: F401
 from flask_admin.menu import MenuView  # noqa: F401
@@ -25,7 +27,7 @@ from flask_admin.theme import Bootstrap4Theme
 from flask_admin.theme import Theme
 
 
-def expose(url="/", methods=("GET",)):
+def expose(url: str = "/", methods: t.Iterable[str] = ("GET",)) -> t.Callable:
     """
     Use this decorator to expose views in your view classes.
 
@@ -44,7 +46,7 @@ def expose(url="/", methods=("GET",)):
     return wrap
 
 
-def expose_plugview(url="/"):
+def expose_plugview(url: str = "/") -> t.Callable:
     """
     Decorator to expose Flask's pluggable view classes
     (``flask.views.View`` or ``flask.views.MethodView``).
@@ -73,7 +75,7 @@ def _wrap_view(f):
         return f
 
     @wraps(f)
-    def inner(self, *args, **kwargs):
+    def inner(self, *args: t.Any, **kwargs: t.Any):
         # Store current admin view
         h.set_current_view(self)
 
@@ -97,7 +99,9 @@ class AdminViewMeta(type):
     avoid calculating them for each view class instance.
     """
 
-    def __init__(cls, classname, bases, fields):
+    def __init__(
+        cls, classname: str, bases: tuple[type, ...], fields: dict[str, t.Any]
+    ) -> None:
         type.__init__(cls, classname, bases, fields)
 
         # Gather exposed views
@@ -153,7 +157,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
     """Extra JavaScript files to include in the page"""
 
     @property
-    def _template_args(self):
+    def _template_args(self) -> dict:
         """
         Extra template arguments.
 
@@ -185,16 +189,16 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
 
     def __init__(
         self,
-        name=None,
-        category=None,
-        endpoint=None,
-        url=None,
-        static_folder=None,
-        static_url_path=None,
-        menu_class_name=None,
-        menu_icon_type=None,
-        menu_icon_value=None,
-    ):
+        name: t.Optional[str] = None,
+        category: t.Optional[str] = None,
+        endpoint: t.Optional[str] = None,
+        url: t.Optional[str] = None,
+        static_folder: t.Optional[str] = None,
+        static_url_path: t.Optional[str] = None,
+        menu_class_name: t.Optional[str] = None,
+        menu_icon_type: t.Optional[str] = None,
+        menu_icon_value: t.Optional[str] = None,
+    ) -> None:
         """
         Constructor.
 
@@ -242,17 +246,17 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         self.menu_icon_value = menu_icon_value
 
         # Initialized from create_blueprint
-        self.admin = None
-        self.blueprint = None
+        self.admin: t.Optional[Admin] = None
+        self.blueprint: t.Optional[Blueprint] = None
 
         # Default view
-        if self._default_view is None:
+        if self._default_view is None:  # type: ignore[attr-defined]
             raise Exception(
                 f"Attempted to instantiate admin view {self.__class__.__name__} "
                 "without default view"
             )
 
-    def _get_endpoint(self, endpoint):
+    def _get_endpoint(self, endpoint: t.Optional[str]) -> str:
         """
         Generate Flask endpoint name. By default converts class name to lower case if
         endpoint is not explicitly provided.
@@ -262,7 +266,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
 
         return self.__class__.__name__.lower()
 
-    def _get_view_url(self, admin, url):
+    def _get_view_url(self, admin: "Admin", url: t.Optional[str]) -> str:
         """
         Generate URL for the view. Override to change default behavior.
         """
@@ -280,7 +284,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
 
         return url
 
-    def create_blueprint(self, admin):
+    def create_blueprint(self, admin: "Admin") -> Blueprint:
         """
         Create Flask blueprint.
         """
@@ -317,15 +321,16 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
             static_url_path=self.static_url_path,
         )
         self.blueprint.attach_url_defaults_and_value_preprocessor(
-            app=self.admin.app, host=self.admin.host
+            app=self.admin.app,  # type: ignore[arg-type]
+            host=self.admin.host,  # type: ignore[arg-type]
         )
 
-        for url, name, methods in self._urls:
+        for url, name, methods in self._urls:  # type: ignore[attr-defined]
             self.blueprint.add_url_rule(url, name, getattr(self, name), methods=methods)
 
         return self.blueprint
 
-    def render(self, template, **kwargs):
+    def render(self, template: str, **kwargs) -> str:
         """
         Render template
 
@@ -336,10 +341,10 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         # Store self as admin_view
         kwargs["admin_view"] = self
-        kwargs["admin_base_template"] = self.admin.theme.base_template
+        kwargs["admin_base_template"] = self.admin.theme.base_template  # type: ignore[union-attr]
         kwargs["admin_csp_nonce_attribute"] = (
-            Markup(f'nonce="{self.admin.csp_nonce_generator()}"')
-            if self.admin.csp_nonce_generator
+            Markup(f'nonce="{self.admin.csp_nonce_generator()}"')  # type: ignore[union-attr]
+            if self.admin.csp_nonce_generator  # type: ignore[union-attr]
             else ""
         )
 
@@ -354,14 +359,14 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
 
         # Expose config info
         kwargs["config"] = current_app.config
-        kwargs["theme"] = self.admin.theme
+        kwargs["theme"] = self.admin.theme  # type: ignore[union-attr]
 
         # Contribute extra arguments
         kwargs.update(self._template_args)
 
         return render_template(template, **kwargs)
 
-    def _prettify_class_name(self, name):
+    def _prettify_class_name(self, name: str) -> str:
         """
         Split words in PascalCase string into separate words.
 
@@ -370,7 +375,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         return h.prettify_class_name(name)
 
-    def is_visible(self):
+    def is_visible(self) -> bool:
         """
         Override this method if you want dynamically hide or show administrative views
         from Flask-Admin menu structure
@@ -382,7 +387,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         return True
 
-    def is_accessible(self):
+    def is_accessible(self) -> bool:
         """
         Override this method to add permission checks.
 
@@ -393,7 +398,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         return True
 
-    def _handle_view(self, name, **kwargs):
+    def _handle_view(self, name: str, **kwargs: dict[str, t.Any]):
         """
         This method will be executed before calling any view method.
 
@@ -408,7 +413,9 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         if not self.is_accessible():
             return self.inaccessible_callback(name, **kwargs)
 
-    def _run_view(self, fn, *args, **kwargs):
+    def _run_view(
+        self, fn: t.Callable, *args: tuple[t.Any], **kwargs: dict[str, t.Any]
+    ) -> t.Any:
         """
         This method will run actual view function.
 
@@ -425,7 +432,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         except TypeError:
             return fn(cls=self, **kwargs)
 
-    def inaccessible_callback(self, name, **kwargs):
+    def inaccessible_callback(self, name: t.Any, **kwargs: t.Any) -> t.Any:
         """
         Handle the response to inaccessible views.
 
@@ -434,7 +441,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         return abort(403)
 
-    def get_url(self, endpoint, **kwargs):
+    def get_url(self, endpoint: str, **kwargs: t.Any) -> str:
         """
         Generate URL for the endpoint. If you want to customize URL generation
         logic (persist some query string argument, for example), this is
@@ -448,7 +455,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         return url_for(endpoint, **kwargs)
 
     @property
-    def _debug(self):
+    def _debug(self) -> bool:
         if not self.admin or not self.admin.app:
             return False
 
@@ -492,14 +499,14 @@ class AdminIndexView(BaseView):
 
     def __init__(
         self,
-        name=None,
-        category=None,
-        endpoint=None,
-        url=None,
-        template="admin/index.html",
-        menu_class_name=None,
-        menu_icon_type=None,
-        menu_icon_value=None,
+        name: t.Optional[str] = None,
+        category: t.Optional[str] = None,
+        endpoint: t.Optional[str] = None,
+        url: t.Optional[str] = None,
+        template: str = "admin/index.html",
+        menu_class_name: t.Optional[str] = None,
+        menu_icon_type: t.Optional[str] = None,
+        menu_icon_value: t.Optional[str] = None,
     ):
         super().__init__(
             name or babel.lazy_gettext("Home"),
@@ -514,7 +521,7 @@ class AdminIndexView(BaseView):
         self._template = template
 
     @expose()
-    def index(self):
+    def index(self) -> str:
         return self.render(self._template)
 
 
@@ -525,17 +532,17 @@ class Admin:
 
     def __init__(
         self,
-        app=None,
-        name=None,
-        url=None,
-        subdomain=None,
-        index_view=None,
+        app: t.Optional[Flask] = None,
+        name: t.Optional[str] = None,
+        url: t.Optional[str] = None,
+        subdomain: t.Optional[str] = None,
+        index_view: t.Optional[AdminIndexView] = None,
         translations_path=None,
-        endpoint=None,
-        static_url_path=None,
+        endpoint: t.Optional[str] = None,
+        static_url_path: t.Optional[str] = None,
         theme: t.Optional[Theme] = None,
-        category_icon_classes=None,
-        host=None,
+        category_icon_classes: t.Optional[dict[str, str]] = None,
+        host: t.Optional[str] = None,
         csp_nonce_generator: t.Optional[t.Callable] = None,
     ):
         """
@@ -591,7 +598,7 @@ class Admin:
         self.static_url_path = static_url_path
         self.subdomain = subdomain
         self.host = host
-        self.theme = theme or Bootstrap4Theme()
+        self.theme: Theme = theme or Bootstrap4Theme()
         self.category_icon_classes = category_icon_classes or dict()
 
         self._validate_admin_host_and_subdomain()
@@ -605,7 +612,7 @@ class Admin:
         if app is not None:
             self._init_extension()
 
-    def _validate_admin_host_and_subdomain(self):
+    def _validate_admin_host_and_subdomain(self) -> None:
         if self.subdomain is not None and self.host is not None:
             raise ValueError("`subdomain` and `host` are mutually-exclusive")
 
@@ -627,7 +634,7 @@ class Admin:
                 "request's host."
             )
 
-    def add_view(self, view):
+    def add_view(self, view: BaseView) -> None:
         """
         Add a view to the collection.
 
@@ -646,7 +653,12 @@ class Admin:
 
         self._add_view_to_menu(view)
 
-    def _set_admin_index_view(self, index_view=None, endpoint=None, url=None):
+    def _set_admin_index_view(
+        self,
+        index_view: t.Optional[BaseView] = None,
+        endpoint: t.Optional[str] = None,
+        url: t.Optional[str] = None,
+    ) -> None:
         """
           Add the admin index view.
 
@@ -659,7 +671,7 @@ class Admin:
              `Admin` class with a single Flask application, you have to set a unique
              endpoint name for each instance.
         """
-        self.index_view = index_view or AdminIndexView(endpoint=endpoint, url=url)
+        self.index_view = index_view or AdminIndexView(endpoint=endpoint, url=url)  # type: ignore[assignment]
         self.endpoint = endpoint or self.index_view.endpoint
         self.url = url or self.index_view.url
 
@@ -671,7 +683,7 @@ class Admin:
         else:
             self.add_view(self.index_view)
 
-    def add_views(self, *args):
+    def add_views(self, *args: t.Any) -> None:
         """
         Add one or more views to the collection.
 
@@ -687,7 +699,13 @@ class Admin:
         for view in args:
             self.add_view(view)
 
-    def add_category(self, name, class_name=None, icon_type=None, icon_value=None):
+    def add_category(
+        self,
+        name: str,
+        class_name: t.Optional[str] = None,
+        icon_type: t.Optional[str] = None,
+        icon_value: t.Optional[str] = None,
+    ) -> None:
         """
         Add a category of a given name
 
@@ -712,7 +730,7 @@ class Admin:
         self._menu_categories[cat_text] = category
         self._menu.append(category)
 
-    def add_sub_category(self, name, parent_name):
+    def add_sub_category(self, name: str, parent_name: str):
         """
         Add a category of a given name underneath
         the category with parent_name.
@@ -732,7 +750,7 @@ class Admin:
             self._menu_categories[name_text] = category
             parent.add_child(category)
 
-    def add_link(self, link):
+    def add_link(self, link: MenuLink):
         """
         Add link to menu links collection.
 
@@ -744,7 +762,7 @@ class Admin:
         else:
             self._menu_links.append(link)
 
-    def add_links(self, *args):
+    def add_links(self, *args: MenuLink) -> None:
         """
         Add one or more links to the menu links collection.
 
@@ -760,7 +778,9 @@ class Admin:
         for link in args:
             self.add_link(link)
 
-    def add_menu_item(self, menu_item, target_category=None):
+    def add_menu_item(
+        self, menu_item: BaseMenu, target_category: t.Optional[str] = None
+    ) -> None:
         """
         Add menu item to menu tree hierarchy.
 
@@ -786,14 +806,16 @@ class Admin:
         else:
             self._menu.append(menu_item)
 
-    def _add_menu_item(self, menu_item, target_category):
+    def _add_menu_item(
+        self, menu_item: BaseMenu, target_category: t.Optional[str] = None
+    ) -> None:
         warnings.warn(
             "Admin._add_menu_item is obsolete - use Admin.add_menu_item instead.",
             stacklevel=1,
         )
         return self.add_menu_item(menu_item, target_category)
 
-    def _add_view_to_menu(self, view):
+    def _add_view_to_menu(self, view: BaseView) -> None:
         """
         Add a view to the menu tree
 
@@ -802,15 +824,18 @@ class Admin:
         """
         self.add_menu_item(MenuView(view.name, view), view.category)
 
-    def get_category_menu_item(self, name):
+    def get_category_menu_item(self, name: str):
         return self._menu_categories.get(name)
 
-    def init_app(self, app, index_view=None, endpoint=None, url=None):
+    def init_app(
+        self,
+        app: Flask,
+        index_view: t.Optional[BaseView] = None,
+        endpoint: t.Optional[str] = None,
+        url: t.Optional[str] = None,
+    ):
         """
         Register all views with the Flask application.
-
-        :param app:
-            Flask application instance
         """
         self.app = app
         self._validate_admin_host_and_subdomain()
@@ -827,11 +852,11 @@ class Admin:
         for view in self._views:
             app.register_blueprint(view.create_blueprint(self), host=self.host)
 
-    def _init_extension(self):
+    def _init_extension(self) -> None:
         if not hasattr(self.app, "extensions"):
-            self.app.extensions = dict()
+            self.app.extensions = dict()  # type: ignore[attr-defined]
 
-        admins = self.app.extensions.get("admin", [])
+        admins = self.app.extensions.get("admin", [])  # type: ignore[union-attr]
 
         for p in admins:
             if p.endpoint == self.endpoint:
@@ -846,15 +871,15 @@ class Admin:
                 )
 
         admins.append(self)
-        self.app.extensions["admin"] = admins
+        self.app.extensions["admin"] = admins  # type: ignore[union-attr]
 
-    def menu(self):
+    def menu(self) -> list:
         """
         Return the menu hierarchy.
         """
         return self._menu
 
-    def menu_links(self):
+    def menu_links(self) -> list:
         """
         Return menu links.
         """
