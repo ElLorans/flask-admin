@@ -398,7 +398,7 @@ class BaseView(BaseViewClass, metaclass=AdminViewMeta):
         """
         return True
 
-    def _handle_view(self, name: str, **kwargs: dict[str, t.Any]):
+    def _handle_view(self, name: str, **kwargs: dict[str, t.Any]) -> t.Any:
         """
         This method will be executed before calling any view method.
 
@@ -507,7 +507,7 @@ class AdminIndexView(BaseView):
         menu_class_name: t.Optional[str] = None,
         menu_icon_type: t.Optional[str] = None,
         menu_icon_value: t.Optional[str] = None,
-    ):
+    ) -> None:
         super().__init__(
             name or babel.lazy_gettext("Home"),
             category,
@@ -537,14 +537,14 @@ class Admin:
         url: t.Optional[str] = None,
         subdomain: t.Optional[str] = None,
         index_view: t.Optional[AdminIndexView] = None,
-        translations_path=None,
+        translations_path: t.Optional[str] = None,
         endpoint: t.Optional[str] = None,
         static_url_path: t.Optional[str] = None,
         theme: t.Optional[Theme] = None,
         category_icon_classes: t.Optional[dict[str, str]] = None,
         host: t.Optional[str] = None,
         csp_nonce_generator: t.Optional[t.Callable] = None,
-    ):
+    ) -> None:
         """
         Constructor.
 
@@ -585,7 +585,7 @@ class Admin:
 
         self._views = []  # type: ignore[var-annotated]
         self._menu = []  # type: ignore[var-annotated]
-        self._menu_categories = dict()  # type: ignore[var-annotated]
+        self._menu_categories: dict[str, MenuCategory] = dict()
         self._menu_links = []  # type: ignore[var-annotated]
 
         if name is None:
@@ -730,7 +730,7 @@ class Admin:
         self._menu_categories[cat_text] = category
         self._menu.append(category)
 
-    def add_sub_category(self, name: str, parent_name: str):
+    def add_sub_category(self, name: str, parent_name: str) -> None:
         """
         Add a category of a given name underneath
         the category with parent_name.
@@ -750,7 +750,7 @@ class Admin:
             self._menu_categories[name_text] = category
             parent.add_child(category)
 
-    def add_link(self, link: MenuLink):
+    def add_link(self, link: MenuLink) -> None:
         """
         Add link to menu links collection.
 
@@ -824,7 +824,7 @@ class Admin:
         """
         self.add_menu_item(MenuView(view.name, view), view.category)
 
-    def get_category_menu_item(self, name: str):
+    def get_category_menu_item(self, name: str) -> t.Optional[MenuCategory]:
         return self._menu_categories.get(name)
 
     def init_app(
@@ -833,7 +833,7 @@ class Admin:
         index_view: t.Optional[BaseView] = None,
         endpoint: t.Optional[str] = None,
         url: t.Optional[str] = None,
-    ):
+    ) -> None:
         """
         Register all views with the Flask application.
         """
