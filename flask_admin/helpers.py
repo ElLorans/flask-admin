@@ -7,7 +7,7 @@ from flask import flash
 from flask import g
 from flask import request
 from flask import url_for
-from jinja2 import pass_context
+from jinja2 import pass_context  # type: ignore[attr-defined]
 from wtforms.validators import DataRequired
 from wtforms.validators import InputRequired
 
