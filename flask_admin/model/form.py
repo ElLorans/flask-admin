@@ -20,7 +20,13 @@ def converts(*args):
     return _inner
 
 
-def create_editable_list_form(form_base_class, form_class, widget=None):
+class BaseListForm(BaseForm):
+    list_form_pk = HiddenField(validators=[InputRequired()])
+
+
+def create_editable_list_form(
+    form_base_class: type[BaseForm], form_class: type[BaseForm], widget=None
+) -> type[BaseListForm]:
     """
     Create a form class with all the fields wrapped in a FieldList.
 
@@ -39,11 +45,11 @@ def create_editable_list_form(form_base_class, form_class, widget=None):
     if widget is None:
         widget = XEditableWidget()
 
-    class ListForm(form_base_class):
-        list_form_pk = HiddenField(validators=[InputRequired()])
+    class ListForm(BaseListForm, form_base_class):  # type: ignore[misc, valid-type]
+        pass
 
     # iterate FormMeta to get unbound fields, replace widget, copy to ListForm
-    for name, obj in iteritems(form_class.__dict__):
+    for name, obj in form_class.__dict__.items():
         if isinstance(obj, UnboundField):
             obj.kwargs["widget"] = widget
             setattr(ListForm, name, obj)

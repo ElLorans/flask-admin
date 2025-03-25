@@ -11,6 +11,8 @@ of it.
 :license: BSD, see LICENSE for more details.
 """
 
+import typing as t
+from types import MappingProxyType
 from typing import Callable
 
 text_type = str
@@ -21,7 +23,7 @@ def itervalues(d: dict):
     return iter(d.values())
 
 
-def iteritems(d: dict):
+def iteritems(d: t.Union[dict, MappingProxyType[str, t.Any]]):
     return iter(d.items())
 
 
